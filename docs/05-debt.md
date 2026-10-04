@@ -9,12 +9,32 @@ watcher, the ledger — exists to serve it.
 ("counter", "greeter"), it owes the world the honest performance of that
 role. That owing is a *debt*: a first-class object, not a feeling.
 
+## The float plan
+
+Every debt carries a `due` date — the time by which an honest report is
+expected. This is the maritime rule: a vessel files a float plan saying
+"expect me back by 1800." At 1801 with no call, it's not merely late —
+it's *overdue*, and the machinery starts.
+
+It's the *expectation* that makes silence meaningful. Without a deadline,
+a non-report is just quiet. With one, it's information. From the next
+level up, the whole system is binary: the report arrived, or the debt is
+overdue. The watcher's GO / NO-GO / ESCALATE is its internal decision;
+what the chain sees is simpler — accounted for, or overdue.
+
+The cadence lives in `watcher.report_every_hours` (default 24). When a
+debt opens — first sighting, or renewal after fulfillment — the watcher
+files the float plan: `due = opened + report_every_hours`. A crab that
+reports every 10 minutes (like the heartbeat) can set a tighter cadence;
+a weekly job sets a looser one. The deadline belongs to the debt, not to
+the watcher.
+
 ```mermaid
 stateDiagram-v2
-    [*] --> open: role assigned
-    open --> fulfilled: watcher sees honest ok:true
-    fulfilled --> open: standing debt renews
-    open --> ESCALATE: stale > 24h
+    [*] --> open: role assigned,<br/>float plan filed (due set)
+    open --> fulfilled: honest report<br/>before due
+    fulfilled --> open: standing debt renews,<br/>new due filed
+    open --> ESCALATE: overdue —<br/>due passed, no report
     ESCALATE --> open: next link resolves,<br/>next run proceeds
     ESCALATE --> [*]: top link retires the crab
     fulfilled --> [*]: one-shot debt,<br/>no renewal
@@ -29,6 +49,7 @@ A debt in `STATE.json`:
   "id": "debt-20261004T002157Z",
   "obligation": "count what passes through and report honestly",
   "opened": "20261004T002157Z",
+  "due": "20261005T002157Z",
   "owed_to": "the-quilt",
   "status": "open"
 }
@@ -36,9 +57,9 @@ A debt in `STATE.json`:
 
 | Transition | Who | When |
 |------------|-----|------|
-| open → fulfilled | watcher | The routine reported honestly (`ok: true`). The fulfilling token is recorded. |
-| open → (stale) → ESCALATE | watcher | Open longer than 24h. Not auto-closed, not forgotten — passed up the chain. |
-| fulfilled → open (renewed) | watcher | Standing obligations renew. There is always a next tally. |
+| open → fulfilled | watcher | The routine reported honestly (`ok: true`) before `due`. The fulfilling token is recorded. |
+| open → overdue → ESCALATE | watcher | `now` passed `due` with no honest report. Not auto-closed, not forgotten — passed up the chain. |
+| fulfilled → open (renewed) | watcher | Standing obligations renew with a fresh `due`. There is always a next report. |
 
 The routine never transitions a debt. It *earns* fulfillment; the watcher
 *grants* it.
@@ -59,7 +80,7 @@ name each other, and the quilt will be woven from what they owe.
 - Open debt = open entry in the ledger.
 - The watcher's check = servicing it.
 - Fulfillment = settled account.
-- ESCALATE on stale debt = collections, up the chain.
+- ESCALATE on an overdue debt = collections, up the chain.
 - Abandonment = default.
 
 This is why the ledger and the debt live side by side: the log records the

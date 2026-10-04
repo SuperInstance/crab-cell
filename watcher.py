@@ -27,29 +27,41 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-
-STALE_DEBT_HOURS = 24
 
 
 def stamp():
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
+def stamp_plus_hours(base_stamp, hours):
+    """The float plan: when the report is due, given when the debt opened."""
+    try:
+        base = datetime.strptime(base_stamp, "%Y%m%dT%H%M%SZ").replace(
+            tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        base = datetime.now(timezone.utc)
+    due = base + timedelta(hours=hours)
+    return due.strftime("%Y%m%dT%H%M%SZ")
+
+
+def is_overdue(due_stamp, now_stamp):
+    """Binary from the next level up: the report arrived, or it didn't."""
+    try:
+        due = datetime.strptime(due_stamp, "%Y%m%dT%H%M%SZ").replace(
+            tzinfo=timezone.utc)
+        now = datetime.strptime(now_stamp, "%Y%m%dT%H%M%SZ").replace(
+            tzinfo=timezone.utc)
+        return now > due
+    except (ValueError, TypeError):
+        return False
+
+
 def log_token(ledger, token, kind, detail):
     ledger.parent.mkdir(parents=True, exist_ok=True)
     with open(ledger, "a") as f:
         f.write(f"{token} WATCHER {kind} {detail}\n")
-
-
-def parse_age_hours(opened):
-    try:
-        opened_dt = datetime.strptime(
-            opened, "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
-        return (datetime.now(timezone.utc) - opened_dt).total_seconds() / 3600
-    except (ValueError, TypeError):
-        return 0.0
 
 
 def main():
@@ -123,18 +135,29 @@ def main():
     if not isinstance(debts, list):
         escalate("debt field is not a list")
 
-    # --- 1. Check debts: stale open debt -> escalate up the chain ---
+    # --- 1. Check debts: overdue open debt -> escalate up the chain ---
+    # The float plan: every debt carries its own due date. It's the
+    # expectation of a report that makes silence meaningful — without a
+    # deadline, a non-report is just quiet; with one, it's overdue.
+    report_every = state.get("watcher", {}).get("report_every_hours", 24)
+    try:
+        report_every = float(report_every)
+    except (ValueError, TypeError):
+        report_every = 24
     for debt in debts:
         if not isinstance(debt, dict) or debt.get("status") != "open":
             continue
         opened = debt.get("opened")
         if not opened:
             debt["opened"] = now  # first sighting starts the clock
-            continue
-        age_h = parse_age_hours(opened)
-        if age_h > STALE_DEBT_HOURS:
+            opened = now
+        if not debt.get("due"):
+            # Backfill the float plan for debts opened before due dates.
+            debt["due"] = stamp_plus_hours(opened, report_every)
+        if is_overdue(debt["due"], now):
             state_path.write_text(json.dumps(state, indent=2))
-            escalate(f"debt {debt.get('id', '?')} open {age_h:.1f}h")
+            escalate(f"debt {debt.get('id', '?')} OVERDUE "
+                     f"(due {debt['due']}, no honest report)")
 
     # --- 2. Check preconditions: the routine needs an inbox ---
     inbox = crab_dir / "inbox.txt"
@@ -195,10 +218,17 @@ def main():
             debt["fulfilled_by"] = rt
             debt["fulfilled_at"] = now
     # The standing obligation renews: there is always a next tally.
+    # The renewed debt files a new float plan — report due by its own deadline.
+    report_every = state.get("watcher", {}).get("report_every_hours", 24)
+    try:
+        report_every = float(report_every)
+    except (ValueError, TypeError):
+        report_every = 24
     debts.append({
         "id": f"debt-{now}-{os.getpid()}",
         "obligation": "count what passes through and report honestly",
         "opened": now,
+        "due": stamp_plus_hours(now, report_every),
         "owed_to": "the-quilt",
         "status": "open",
     })

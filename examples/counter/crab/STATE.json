@@ -7,7 +7,8 @@
       "obligation": "count what passes through and report honestly",
       "opened": null,
       "owed_to": "the-quilt",
-      "status": "open"
+      "status": "open",
+      "due": null
     }
   ],
   "last_run": null,
@@ -23,6 +24,7 @@
   "routine": "routine.sh",
   "watcher": {
     "policy": "halt on unknown input; pass undecidable up the chain; never run free",
-    "escalate_to": "human"
+    "escalate_to": "human",
+    "report_every_hours": 24
   }
 }

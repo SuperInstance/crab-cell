@@ -19,8 +19,8 @@ it runs, it doesn't decide) and a **watcher** (`watcher.py` — the agent —
 it decides, it doesn't execute). The routine runs inside a shell
 (`shells/sandbox.sh`: bwrap + Landlock, timeout-killed — or the instance
 itself, see `docs/06-shells.md`). Every run appends a token to the ledger.
-The watcher fulfills debts on honest reports and escalates to a human when
-anything is stale, broken, or halted.
+The watcher fulfills debts on honest reports and escalates up the chain when
+anything is overdue, broken, or halted.
 
 The whole loop, in one diagram:
 

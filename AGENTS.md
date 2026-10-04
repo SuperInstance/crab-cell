@@ -49,7 +49,7 @@ away, or to build on it.
 - Tokens: `<token> <VERB> <detail>`, past tense, `tok-` for routine,
   `wtok-` for watcher. Append-only.
 - Debts: open → fulfilled (watcher, on honest report) → renewed (standing
-  obligations) or ESCALATE (stale > 24h).
+  obligations) or ESCALATE (past due — see the float plan in docs/05-debt.md).
 - Time: UTC, `YYYYMMDDTHHMMSSZ`.
 - The ledger is the source of truth; `STATE.json` is its cache.
 

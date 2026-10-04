@@ -25,8 +25,8 @@ action: the chain, not the human. The human is the top link, not the only one.
 flowchart TD
     Start(["watcher.py --crab-dir"]) --> Read["read STATE.json"]
     Read -->|"missing / corrupt"| E1["<b>ESCALATE</b><br/>exit 2 → human<br/><i>no state, no named<br/>superior — top link</i>"]
-    Read --> Debts{"debts fresh?"}
-    Debts -->|"open > 24h"| E2["<b>ESCALATE</b><br/>exit 2 → escalate_to<br/><i>collections, up the chain</i>"]
+    Read --> Debts{"debts overdue?"}
+    Debts -->|"overdue: past due"| E2["<b>ESCALATE</b><br/>exit 2 → escalate_to<br/><i>collections, up the chain</i>"]
     Debts --> Inbox{"inbox present?"}
     Inbox -->|"no"| NG["<b>NO-GO</b><br/>exit 0<br/><i>nothing to do</i>"]
     Inbox -->|"yes"| GO["<b>GO</b><br/>shell runs routine"]
@@ -53,8 +53,8 @@ the top, every layer passing up what it can't decide.
 
 1. **Can I read the crab?** `STATE.json` missing or corrupt → ESCALATE (straight to human — no state, no named superior).
    Never supervise what you cannot read. Never guess.
-2. **Are the debts fresh?** Any open debt older than 24h → ESCALATE up the chain.
-   An unfulfilled obligation is not the routine's problem to solve alone.
+2. **Are the debts overdue?** Any open debt past its `due` → ESCALATE up the chain.
+   The float plan said when the report was expected; it didn't come.
 3. **Are preconditions met?** No inbox → NO-GO. Don't spend a run to learn
    there's nothing to do.
 4. **Run.** The sandbox executes the routine. A non-zero sandbox exit →

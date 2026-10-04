@@ -45,12 +45,12 @@ wtok-20261004T002155Z WATCHER NO-GO no inbox — nothing to count
 wtok-20261004T002157Z WATCHER GO cursor=0 debts_open=1
 tok-20261004T002157Z-6903 TALLY lines=3
 wtok-20261004T002157Z WATCHER FULFILLED routine token tok-20261004T002157Z-6903 reported honestly — debt renewed
-wtok-20261004T002200Z WATCHER ESCALATE debt debt-20261004T002157Z open 72.4h — human must look
+wtok-20261004T002200Z WATCHER ESCALATE debt debt-20261004T002157Z OVERDUE (due 20261005T002157Z, no honest report) -> human
 ```
 
 Read it as a story: the watcher declined once (nothing to do), then ran the
 crab, the crab tallied honestly, the watcher fulfilled the debt — and three
-days later the renewed debt went stale and a human was called. The whole
+days later the renewed debt went overdue and the decision passed up the chain. The whole
 moral history of the crab, in five lines.
 
 ## What the ledger is not

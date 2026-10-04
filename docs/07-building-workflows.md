@@ -88,7 +88,7 @@ When you compose crabs, you inherit their contracts:
   what it sent. Disputes resolve by reading both scrolls.
 - **Debts compose.** The fetch-crab owes honest fetching; the report-crab
   owes honest reporting. The pipeline's debt is the *conjunction* — and if
-  any cell's debt goes stale, its watcher calls the human, not the next cell.
+  any cell's debt goes overdue, its watcher passes it up the chain, not to the next cell.
 
 ## Growing the quilt
 
