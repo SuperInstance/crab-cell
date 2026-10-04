@@ -20,6 +20,22 @@ Every run ends in exactly one of:
 There is no fourth state. There is no silence. A watcher that cannot decide
 escalates — that *is* a decision.
 
+```mermaid
+flowchart TD
+    Start(["watcher.py --crab-dir"]) --> Read["read STATE.json"]
+    Read -->|"missing / corrupt"| M1["<b>MANUAL</b><br/>exit 2<br/><i>cannot supervise what<br/>I cannot read</i>"]
+    Read --> Debts{"debts fresh?"}
+    Debts -->|"open > 24h"| M2["<b>MANUAL</b><br/>exit 2<br/><i>collections</i>"]
+    Debts --> Inbox{"inbox present?"}
+    Inbox -->|"no"| NG["<b>NO-GO</b><br/>exit 0<br/><i>nothing to do</i>"]
+    Inbox -->|"yes"| GO["<b>GO</b><br/>sandbox runs routine"]
+    GO -->|"exit ≠ 0"| M3["<b>MANUAL</b><br/>exit 2<br/><i>never retry blind</i>"]
+    GO --> Account{"RESULTS ok?"}
+    Account -->|"no / missing"| M4["<b>MANUAL</b><br/>exit 2<br/><i>the halt is information</i>"]
+    Account -->|"yes"| Fulfill["fulfill debts<br/>renew standing debt<br/>log FULFILLED"]
+    Fulfill --> Done(["exit 0"])
+```
+
 ## What the watcher checks, in order
 
 1. **Can I read the crab?** `STATE.json` missing or corrupt → MANUAL.

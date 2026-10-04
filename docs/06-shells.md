@@ -14,6 +14,14 @@ A crab doesn't care which shell holds it. The contract is small:
 Anything meeting that contract is a shell. There are three, in order of
 simplicity:
 
+```mermaid
+flowchart LR
+    Crab["<b>crab/</b><br/>the sheet"] --> Contract{"the contract:<br/>run contained ·<br/>kill on timeout ·<br/>non-zero on failure ·<br/>writable workdir"}
+    Contract --> I["<b>instance</b><br/>the machine is the wall<br/><i>default · simplest</i>"]
+    Contract --> S["<b>sandbox.sh</b><br/>bwrap + Landlock<br/><i>many crabs, one box</i>"]
+    Contract --> O["<b>OpenShell</b><br/>provable containment<br/><i>the fleet</i>"]
+```
+
 ## 1. Instance-as-shell (the default)
 
 Give the crab a whole machine — a VM, a container, a spare box. The

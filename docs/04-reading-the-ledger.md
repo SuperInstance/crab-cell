@@ -3,6 +3,27 @@
 `LEDGER/tokens.log` is the scroll: the replayable account of everything the
 crab and its watcher did. One line per event. No prose.
 
+One supervised run, as a story:
+
+```mermaid
+sequenceDiagram
+    participant W as watcher.py
+    participant S as shell
+    participant R as routine.sh
+    participant L as LEDGER/tokens.log
+    W->>W: read STATE, check debts,<br/>check inbox → GO
+    W->>L: wtok-… WATCHER GO cursor=0
+    W->>S: run the routine, contained
+    S->>R: execute (timeout armed)
+    R->>L: tok-… TALLY lines=3
+    R->>W: RESULTS.json {"ok": true}
+    W->>W: honest report →<br/>fulfill debt, renew it
+    W->>L: wtok-… WATCHER FULFILLED
+```
+
+Four actors, seven messages, and you can reconstruct the entire run from the
+three lines that landed in the ledger.
+
 ## The grammar
 
 ```

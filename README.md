@@ -39,7 +39,7 @@ it works, and you understand it. That's the go/no-go.
 | `shells/` | The boundary. `sandbox.sh` (bwrap + Landlock + timeout); see `docs/06-shells.md` for the instance and OpenShell options. |
 | `templates/counter/` | The blank crab. Copy it, give it a role and a debt. |
 | `examples/` | Three worked crabs: `counter` (minimal), `greeter` (different role, same loop), `breaker` (adversarial — watch the walls hold). |
-| `docs/` | Six tutorials: first crab, writing a routine, being the watcher, reading the ledger, debt, shells. |
+| `docs/` | Seven tutorials: first crab, writing a routine, being the watcher, reading the ledger, debt, shells, building workflows. |
 
 ## The ideas, in one paragraph
 

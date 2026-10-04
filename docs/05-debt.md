@@ -9,6 +9,17 @@ watcher, the ledger — exists to serve it.
 ("counter", "greeter"), it owes the world the honest performance of that
 role. That owing is a *debt*: a first-class object, not a feeling.
 
+```mermaid
+stateDiagram-v2
+    [*] --> open: role assigned
+    open --> fulfilled: watcher sees honest ok:true
+    fulfilled --> open: standing debt renews
+    open --> MANUAL: stale > 24h
+    MANUAL --> open: human resolves,<br/>next run proceeds
+    MANUAL --> [*]: human retires the crab
+    fulfilled --> [*]: one-shot debt,<br/>no renewal
+```
+
 ## The lifecycle
 
 A debt in `STATE.json`:
