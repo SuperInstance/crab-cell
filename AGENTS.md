@@ -10,7 +10,7 @@ away, or to build on it.
   (its orders), `routine.sh` (the bot), `RESULTS.json` (its last account),
   `LEDGER/tokens.log` (its history).
 - `watcher.py --crab-dir <path>` supervises it. Exit 0 = handled, exit 2 =
-  a human must look (MANUAL).
+  the decision passes up the chain (ESCALATE).
 - `shells/sandbox.sh --crab-dir <path>` runs the routine contained on a
   shared machine. You will rarely call this directly — the watcher does.
   (The default shell is the instance itself: a crab is a machine.)
@@ -34,7 +34,7 @@ away, or to build on it.
   holds. See `examples/greeter` for the pattern.
 - **New watcher policies**: the decision order in `watcher.py` is
   read → debts → preconditions → run → account → manage. Add checks in
-  that order; keep the three-state exit contract (GO/NO-GO/MANUAL).
+  that order; keep the three-state exit contract (GO / NO-GO / ESCALATE).
 - **New sandbox backends**: `shells/sandbox.sh` is the minimal shell; the
   default is instance-as-shell; the fleet shell is OpenShell. The contract
   between watcher and shell is just "run this directory's routine,
@@ -49,7 +49,7 @@ away, or to build on it.
 - Tokens: `<token> <VERB> <detail>`, past tense, `tok-` for routine,
   `wtok-` for watcher. Append-only.
 - Debts: open → fulfilled (watcher, on honest report) → renewed (standing
-  obligations) or MANUAL (stale > 24h).
+  obligations) or ESCALATE (stale > 24h).
 - Time: UTC, `YYYYMMDDTHHMMSSZ`.
 - The ledger is the source of truth; `STATE.json` is its cache.
 

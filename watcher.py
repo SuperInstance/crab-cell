@@ -3,18 +3,24 @@
 
 The loop:
     1. Read STATE.json (role, debts, policy, cursor).
-    2. Decide: GO (run the routine), NO-GO (don't run, say why), or MANUAL
-       (escalate — a human must look).
+    2. Decide: GO (run the routine), NO-GO (don't run, say why), or ESCALATE
+       (cannot decide — pass it up the chain of command).
     3. On GO: invoke the shell (shells/sandbox.sh by default), then read
        RESULTS.json and the new ledger tokens.
     4. Record every decision as a token in LEDGER/tokens.log.
     5. Manage debts: fulfill on honest report, renew standing debts,
        escalate stale ones.
 
+The chain of command: a watcher that cannot decide does not guess — it
+passes the decision up. The next link can be another watcher, another
+agent, another algorithm; at the top, a human. STATE.json names the next
+link in `watcher.escalate_to`. Exit 2 means "escalated" — the caller (parent
+watcher, cron, human) takes it from here.
+
 The watcher never runs on silence. Every run ends in an explicit decision.
 A watcher that cannot read the crab's state does not guess — it escalates.
 
-Exit codes: 0 = handled (GO or NO-GO), 2 = MANUAL escalation needed.
+Exit codes: 0 = handled (GO or NO-GO), 2 = escalated up the chain.
 """
 
 import json
@@ -79,28 +85,45 @@ def main():
     token = f"wtok-{now}"
 
     # --- 0. If the crab's state is unreadable, do not guess. Escalate. ---
+    # No state means no named superior — these go straight to the human.
     try:
         state = json.loads(state_path.read_text())
     except FileNotFoundError:
-        log_token(ledger, token, "MANUAL", "STATE.json missing — cannot supervise")
-        print("MANUAL: STATE.json missing. Cannot supervise what I cannot read.")
+        log_token(ledger, token, "ESCALATE",
+                  "STATE.json missing — cannot supervise -> human")
+        print("ESCALATE: STATE.json missing. Cannot supervise what I cannot "
+              "read. Passing up to human.")
         sys.exit(2)
     except json.JSONDecodeError as e:
-        log_token(ledger, token, "MANUAL", f"STATE.json corrupt: {e}")
-        print(f"MANUAL: STATE.json corrupt ({e}). Escalating, not guessing.")
+        log_token(ledger, token, "ESCALATE", f"STATE.json corrupt: {e} -> human")
+        print(f"ESCALATE: STATE.json corrupt ({e}). Not guessing. Passing up "
+              "to human.")
         sys.exit(2)
     if not isinstance(state, dict):
-        log_token(ledger, token, "MANUAL", "STATE.json is not an object")
-        print("MANUAL: STATE.json is not an object. Escalating.")
+        log_token(ledger, token, "ESCALATE",
+                  "STATE.json is not an object -> human")
+        print("ESCALATE: STATE.json is not an object. Passing up to human.")
+        sys.exit(2)
+
+    # The next link up the chain. A watcher that cannot decide passes to
+    # whoever this names — another watcher, an agent, a human.
+    def escalate_to():
+        try:
+            return state.get("watcher", {}).get("escalate_to", "human")
+        except AttributeError:
+            return "human"
+
+    def escalate(reason):
+        dest = escalate_to()
+        log_token(ledger, token, "ESCALATE", f"{reason} -> {dest}")
+        print(f"ESCALATE: {reason} Passing up to {dest}.")
         sys.exit(2)
 
     debts = state.get("debt", [])
     if not isinstance(debts, list):
-        log_token(ledger, token, "MANUAL", "debt field is not a list")
-        print("MANUAL: debt field malformed. Escalating.")
-        sys.exit(2)
+        escalate("debt field is not a list")
 
-    # --- 1. Check debts: stale open debt -> MANUAL ---
+    # --- 1. Check debts: stale open debt -> escalate up the chain ---
     for debt in debts:
         if not isinstance(debt, dict) or debt.get("status") != "open":
             continue
@@ -110,12 +133,8 @@ def main():
             continue
         age_h = parse_age_hours(opened)
         if age_h > STALE_DEBT_HOURS:
-            log_token(ledger, token, "MANUAL",
-                      f"debt {debt.get('id', '?')} open {age_h:.1f}h — human must look")
             state_path.write_text(json.dumps(state, indent=2))
-            print(f"MANUAL: debt {debt.get('id', '?')} stale ({age_h:.1f}h). "
-                  "Escalating.")
-            sys.exit(2)
+            escalate(f"debt {debt.get('id', '?')} open {age_h:.1f}h")
 
     # --- 2. Check preconditions: the routine needs an inbox ---
     inbox = crab_dir / "inbox.txt"
@@ -135,44 +154,27 @@ def main():
              "--timeout", sandbox_timeout],
             capture_output=True, text=True, timeout=120)
     except subprocess.TimeoutExpired:
-        log_token(ledger, token, "MANUAL",
-                  "sandbox wrapper itself timed out — supervisor overdue")
-        print("MANUAL: sandbox wrapper timed out. Escalating.")
-        sys.exit(2)
+        escalate("sandbox wrapper itself timed out — supervisor overdue")
     except OSError as e:
-        log_token(ledger, token, "MANUAL", f"cannot invoke sandbox: {e}")
-        print(f"MANUAL: cannot invoke sandbox ({e}). Escalating.")
-        sys.exit(2)
+        escalate(f"cannot invoke sandbox: {e}")
 
     if proc.returncode != 0:
-        log_token(ledger, token, "MANUAL",
-                  f"sandbox exited {proc.returncode}: "
-                  f"{proc.stderr.strip()[:200]}")
-        print(f"MANUAL: sandbox failed (exit {proc.returncode}). Escalating.")
-        sys.exit(2)
+        escalate(f"sandbox exited {proc.returncode}: "
+                 f"{proc.stderr.strip()[:200]}")
 
     # --- 4. Read the account, not the mind ---
     try:
         results = json.loads(results_path.read_text())
     except FileNotFoundError:
-        log_token(ledger, token, "MANUAL",
-                  "RESULTS.json missing after run — routine left no account")
-        print("MANUAL: routine left no account (RESULTS.json missing). "
-              "Escalating.")
-        sys.exit(2)
+        escalate("RESULTS.json missing after run — routine left no account")
     except json.JSONDecodeError as e:
-        log_token(ledger, token, "MANUAL", f"RESULTS.json corrupt: {e}")
-        print(f"MANUAL: RESULTS.json corrupt ({e}). Escalating.")
-        sys.exit(2)
+        escalate(f"RESULTS.json corrupt: {e}")
 
     if not isinstance(results, dict) or not results.get("ok"):
         err = results.get("error", "unknown") if isinstance(results, dict) else "unreadable"
         # The routine halted honestly. That's information, not failure.
-        # Do not blindly retry: escalate.
-        log_token(ledger, token, "MANUAL", f"routine halted: {err}")
-        print(f"MANUAL: routine halted honestly ({err}). "
-              "Not retrying blind. Human decides.")
-        sys.exit(2)
+        # Do not blindly retry: pass it up.
+        escalate(f"routine halted honestly: {err} — not retrying blind")
 
     # --- 5. Honest report: fulfill open debts, renew the standing one ---
     # Re-read STATE.json: the routine advanced cursor/last_run during its run,
@@ -184,10 +186,7 @@ def main():
         if not isinstance(debts, list):
             debts = []
     except (json.JSONDecodeError, FileNotFoundError):
-        log_token(ledger, token, "MANUAL",
-                  "STATE.json changed under us and is now unreadable")
-        print("MANUAL: state changed under us and is unreadable. Escalating.")
-        sys.exit(2)
+        escalate("STATE.json changed under us and is now unreadable")
 
     rt = results.get("token", "?")
     for debt in debts:

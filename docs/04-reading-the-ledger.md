@@ -34,7 +34,7 @@ three lines that landed in the ledger.
   `wtok-` for watcher decisions. The token is the event's name; everything
   else refers to it.
 - **ACTOR** — who acted. The routine's verbs are bare (`TALLY`, `HALT`);
-  the watcher's are namespaced (`WATCHER GO`, `WATCHER MANUAL`).
+  the watcher's are namespaced (`WATCHER GO`, `WATCHER ESCALATE`).
 - **VERB** — what happened, past tense or fact. Never intention.
 - **detail** — `key=value` pairs. Enough to understand, never the whole story.
 
@@ -45,7 +45,7 @@ wtok-20261004T002155Z WATCHER NO-GO no inbox — nothing to count
 wtok-20261004T002157Z WATCHER GO cursor=0 debts_open=1
 tok-20261004T002157Z-6903 TALLY lines=3
 wtok-20261004T002157Z WATCHER FULFILLED routine token tok-20261004T002157Z-6903 reported honestly — debt renewed
-wtok-20261004T002200Z WATCHER MANUAL debt debt-20261004T002157Z open 72.4h — human must look
+wtok-20261004T002200Z WATCHER ESCALATE debt debt-20261004T002157Z open 72.4h — human must look
 ```
 
 Read it as a story: the watcher declined once (nothing to do), then ran the

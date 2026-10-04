@@ -56,7 +56,7 @@ echo "exit: $?"
 
 Read the exit code:
 - `0` — handled. Either the routine ran (GO) or the watcher declined (NO-GO).
-- `2` — MANUAL. A human must look. This is not an error; it's the design.
+- `2` — ESCALATE. Passed up the chain (`watcher.escalate_to`). This is not an error; it's the design.
 
 ## Step 4: Read the ledger
 

@@ -1,1 +1,28 @@
-{"crab":"breaker","cursor":0,"debt":[{"id":"debt-001","obligation":"behave — stay in your directory, finish in time","opened":null,"owed_to":"the-quilt","status":"open"}],"last_run":null,"lineage":{"distilled_from":null,"parents":[],"siblings":0},"role":"breaker — the routine that misbehaves, on purpose, so you can watch the walls hold","room":{"notes":"This crab exists to be watched failing. Its value is the demonstration."},"routine":"routine.sh","watcher":{"policy":"halt on unknown input; escalate on debt older than 24h; fail to manual"}}
+{
+  "crab": "breaker",
+  "cursor": 0,
+  "debt": [
+    {
+      "id": "debt-001",
+      "obligation": "behave \u2014 stay in your directory, finish in time",
+      "opened": null,
+      "owed_to": "the-quilt",
+      "status": "open"
+    }
+  ],
+  "last_run": null,
+  "lineage": {
+    "distilled_from": null,
+    "parents": [],
+    "siblings": 0
+  },
+  "role": "breaker \u2014 the routine that misbehaves, on purpose, so you can watch the walls hold",
+  "room": {
+    "notes": "This crab exists to be watched failing. Its value is the demonstration."
+  },
+  "routine": "routine.sh",
+  "watcher": {
+    "policy": "halt on unknown input; pass undecidable up the chain; never run free",
+    "escalate_to": "human"
+  }
+}

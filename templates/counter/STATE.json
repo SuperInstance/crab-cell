@@ -22,6 +22,7 @@
   },
   "routine": "routine.sh",
   "watcher": {
-    "policy": "halt on unknown input; escalate on debt older than 24h; fail to manual"
+    "policy": "halt on unknown input; pass undecidable up the chain; never run free",
+    "escalate_to": "human"
   }
 }

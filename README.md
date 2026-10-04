@@ -4,9 +4,10 @@
 
 An assigned role creates an obligation — a debt. The routine (the bot) does
 the work, contained, and reports honestly. The watcher (the agent) decides
-whether it runs, fulfills debts on honest reports, and calls for a human
-the moment anything goes stale or breaks. Nothing fails silently. Nothing
-runs free.
+whether it runs: GO, NO-GO, or — when the decision isn't its to make —
+it passes it up the chain of command. The next link can be another watcher,
+another agent, another algorithm; at the top, a human. Nothing fails
+silently. Nothing runs free. Nothing decides what it can't.
 
 This is not a building block. It's a stewardship loop — the smallest
 mechanism by which untrusted work becomes trustworthy over time. The crab
@@ -24,7 +25,7 @@ anything is stale, broken, or halted.
 The whole loop, in one diagram:
 
 ```
-watcher decides (GO / NO-GO / MANUAL)
+watcher decides (GO / NO-GO / ESCALATE)
   → sandbox runs routine (GO only)
     → routine appends token, writes RESULTS.json
   → watcher reads the account, fulfills/renews debts, logs its decision
@@ -46,7 +47,7 @@ it works, and you understand it. That's the go/no-go.
 
 | Path | What |
 |------|------|
-| `watcher.py` | The agent. Decides GO / NO-GO / MANUAL, manages debts. |
+| `watcher.py` | The agent. Decides GO / NO-GO / ESCALATE, manages debts. |
 | `shells/` | The boundary. `sandbox.sh` (bwrap + Landlock + timeout); see `docs/06-shells.md` for the instance and OpenShell options. |
 | `templates/counter/` | The blank crab. Copy it, give it a role and a debt. |
 | `examples/` | Three worked crabs: `counter` (minimal), `greeter` (different role, same loop), `breaker` (adversarial — watch the walls hold). |
@@ -58,7 +59,7 @@ A stewardship loop — not a task runner with audit logging. The difference:
 a task runner asks "did it finish?"; this asks "is it still worthy of
 running?" Every cycle, the watcher re-examines the crab: are its debts
 fresh, are its preconditions met, did it report honestly last time? GO
-means it earned another round. MANUAL means something has to change. The
+means it earned another round. ESCALATE means the decision goes up the chain. The
 routine never decides policy, never closes debts, never leaves its
 directory — and halts honestly rather than improvising. Fail to manual,
 not to automatic.

@@ -47,7 +47,7 @@ cp ./transform-crab/RESULTS.json ./report-crab/inbox.txt
 ./watcher.py --crab-dir ./report-crab
 ```
 
-If any watcher exits 2 (MANUAL), `set -e` stops the row. The pipeline fails
+If any watcher exits 2 (ESCALATE), `set -e` stops the row. The pipeline passes it up
 to manual — the human looks at *that crab's* ledger, fixes it, re-runs from
 that cell. Cells downstream never ran on bad input, because they never ran
 at all.
@@ -81,7 +81,7 @@ whiteboard — because it *is* the diagram.
 
 When you compose crabs, you inherit their contracts:
 
-- **A halted cell stops its row.** `MANUAL` propagates as "don't run
+- **A halted cell stops its row.** `ESCALATE` propagates as "don't run
   downstream." No poisoned inputs.
 - **Every handoff is auditable.** The receiving crab's ledger shows what
   arrived (its routine logs what it read); the sending crab's ledger shows
@@ -102,6 +102,6 @@ That's the recursion: cells compose into rows, rows compose into sheets,
 sheets compose into the quilt. The blocks don't change as the structure
 grows — but remember what they are: not bricks, but living cells. Each one
 is still being watched, still owing, still earning its next round. At every
-level, the same three states (GO / NO-GO / MANUAL), the same ledger grammar,
+level, the same three states (GO / NO-GO / ESCALATE), the same ledger grammar,
 the same moral physics. Composition is what cells do. Stewardship is what
 they are.

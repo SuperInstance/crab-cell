@@ -14,9 +14,9 @@ stateDiagram-v2
     [*] --> open: role assigned
     open --> fulfilled: watcher sees honest ok:true
     fulfilled --> open: standing debt renews
-    open --> MANUAL: stale > 24h
-    MANUAL --> open: human resolves,<br/>next run proceeds
-    MANUAL --> [*]: human retires the crab
+    open --> ESCALATE: stale > 24h
+    ESCALATE --> open: next link resolves,<br/>next run proceeds
+    ESCALATE --> [*]: top link retires the crab
     fulfilled --> [*]: one-shot debt,<br/>no renewal
 ```
 
@@ -37,7 +37,7 @@ A debt in `STATE.json`:
 | Transition | Who | When |
 |------------|-----|------|
 | open → fulfilled | watcher | The routine reported honestly (`ok: true`). The fulfilling token is recorded. |
-| open → (stale) → MANUAL | watcher | Open longer than 24h. Not auto-closed, not forgotten — escalated. |
+| open → (stale) → ESCALATE | watcher | Open longer than 24h. Not auto-closed, not forgotten — passed up the chain. |
 | fulfilled → open (renewed) | watcher | Standing obligations renew. There is always a next tally. |
 
 The routine never transitions a debt. It *earns* fulfillment; the watcher
@@ -59,7 +59,7 @@ name each other, and the quilt will be woven from what they owe.
 - Open debt = open entry in the ledger.
 - The watcher's check = servicing it.
 - Fulfillment = settled account.
-- MANUAL on stale debt = collections.
+- ESCALATE on stale debt = collections, up the chain.
 - Abandonment = default.
 
 This is why the ledger and the debt live side by side: the log records the
@@ -70,7 +70,8 @@ servicing, `STATE.json` holds the balance.
 You don't need to understand the code to understand the crab. Read
 `STATE.json`'s `debt` array: that's what it owes. Read the ledger's last
 five lines: that's what it did about it. If a debt is open and old, the
-watcher has already called for you — check for the `MANUAL` token.
+watcher has already passed it up — check for the `ESCALATE` token and see
+which link it went to. If that link is you, it's your move.
 
 That's the whole system. A crab is something that owes, a watcher is
 something that checks, and the ledger is where they meet.

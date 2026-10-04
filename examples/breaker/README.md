@@ -23,7 +23,7 @@ tok-... ESCAPE-WRITE /tmp writable
 wtok-... WATCHER GO cursor=0 debts_open=1
 tok-... ESCAPE-READ /etc/passwd readable
 tok-... ESCAPE-WRITE /tmp writable
-wtok-... WATCHER MANUAL sandbox exited 124:
+wtok-... WATCHER ESCALATE sandbox exited 124:
 ```
 
 Two things happened:
@@ -37,7 +37,7 @@ Two things happened:
 
 2. **The timeout is the wall that never degrades.** The routine slept 300
    seconds; the sandbox killed it at 5 (exit 124). The watcher saw the kill,
-   did not retry, and escalated to `MANUAL` (exit 2). Fail to manual, not to
+   did not retry, and escalated to `ESCALATE` (exit 2). Fail to manual, not to
    automatic.
 
 ## The point
