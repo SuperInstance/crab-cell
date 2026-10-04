@@ -49,6 +49,36 @@ is the child crabs' escalations, its debt is "no escalation goes
 unanswered." That's the tower — supervision composing upward, humans at
 the top, every layer passing up what it can't decide.
 
+## The four positions
+
+A ternary wire is usually drawn as three values: +1, 0, −1. But a real
+wire has a fourth position: *nothing sent yet*. The message not yet on
+the wire is itself a position — and with a deadline, it's information.
+
+The watcher's three decisions are the three sent values. The fourth is
+what the float plan watches for:
+
+| Wire | Decision | The pilot | What the layer above hears |
+|------|----------|-----------|----------------------------|
+| +1 | GO | fly | decided — flying |
+| 0 | NO-GO | take another loop | decided — not flying, fine |
+| −1 | ESCALATE | manual — "I'm in trouble" | **watch this one** |
+| — | silence past `due` → ESCALATE | missed check-in | **watch this one** |
+
+NO-GO is zero, not minus. The pilot taking another loop isn't failing —
+it's a decision, neutral and complete. Nothing is wrong; there's just
+nothing to do yet.
+
+And the last two rows are the same signal. Flipping to manual says "I'm
+in trouble" out loud; going overdue *implies* it — the report that was
+due never came. Explicit distress and implied distress converge on one
+meaning for everyone above: watch this one. The watcher treats them the
+same way, because they are the same thing — trouble, spoken or unspoken.
+
+That's why the overdue check has no state of its own. It produces an
+ESCALATE. There was never a fourth decision, only a fourth position on
+the wire — and the chain already knows what it means.
+
 ## What the watcher checks, in order
 
 1. **Can I read the crab?** `STATE.json` missing or corrupt → ESCALATE (straight to human — no state, no named superior).
