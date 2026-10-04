@@ -1,12 +1,23 @@
-# crab
+# crab-cell
 
-The smallest working piece of the quilt: a supervised agent cell.
+**A crab is something that owes, a watcher is something that checks, and the ledger is where they meet.**
 
-A **crab** is a directory containing a **routine** (the bot — it runs, it
-doesn't decide) and a **watcher** (`watcher.py` — the agent — it decides,
-it doesn't execute). The routine runs inside a shell (`shells/sandbox.sh`:
-bwrap + Landlock, timeout-killed — or the instance itself, see
-`docs/06-shells.md`). Every run appends a token to the ledger.
+An assigned role creates an obligation — a debt. The routine (the bot) does
+the work, contained, and reports honestly. The watcher (the agent) decides
+whether it runs, fulfills debts on honest reports, and calls for a human
+the moment anything goes stale or breaks. Nothing fails silently. Nothing
+runs free.
+
+This is not a building block. It's a stewardship loop — the smallest
+mechanism by which untrusted work becomes trustworthy over time. The crab
+is the unit of selection: what persists, gets judged, and improves. The
+watcher is the selection pressure. The ledger is the record.
+
+Concretely: a **crab** is a directory containing a **routine** (the bot —
+it runs, it doesn't decide) and a **watcher** (`watcher.py` — the agent —
+it decides, it doesn't execute). The routine runs inside a shell
+(`shells/sandbox.sh`: bwrap + Landlock, timeout-killed — or the instance
+itself, see `docs/06-shells.md`). Every run appends a token to the ledger.
 The watcher fulfills debts on honest reports and escalates to a human when
 anything is stale, broken, or halted.
 
@@ -41,14 +52,22 @@ it works, and you understand it. That's the go/no-go.
 | `examples/` | Three worked crabs: `counter` (minimal), `greeter` (different role, same loop), `breaker` (adversarial — watch the walls hold). |
 | `docs/` | Seven tutorials: first crab, writing a routine, being the watcher, reading the ledger, debt, shells, building workflows. |
 
-## The ideas, in one paragraph
+## What this is, exactly
 
-An assigned role creates an obligation — a **debt**. The routine owes honest
-work; the watcher owes supervision. The routine reports via tokens in an
-append-only ledger; the watcher fulfills debts on honest reports and calls
-for a human (MANUAL, exit 2) on anything stale or broken. The routine never
-decides policy, never closes debts, never leaves its directory — and halts
-honestly rather than improvising. Fail to manual, not to automatic.
+A stewardship loop — not a task runner with audit logging. The difference:
+a task runner asks "did it finish?"; this asks "is it still worthy of
+running?" Every cycle, the watcher re-examines the crab: are its debts
+fresh, are its preconditions met, did it report honestly last time? GO
+means it earned another round. MANUAL means something has to change. The
+routine never decides policy, never closes debts, never leaves its
+directory — and halts honestly rather than improvising. Fail to manual,
+not to automatic.
+
+Over time, the crab accumulates: cursor advances, debts fulfill and renew,
+the ledger lengthens, lineage extends. That accumulation is the point.
+The loop doesn't just supervise work — it's the mechanism by which a
+routine becomes trustworthy: selected round after round, or escalated the
+moment it stops deserving trust.
 
 ## Provenance
 

@@ -1,7 +1,7 @@
 # Tutorial 7: Building workflows from crabs
 
-You're a coding agent. You have the crab-cell repo. Here's how you treat
-crabs as building blocks.
+You're a coding agent. You know what a crab *is* — a stewardship loop.
+Here's what crabs *do* together.
 
 ## The one composition rule
 
@@ -99,7 +99,9 @@ a crab whose routine *is* the pipeline, whose debt is "run the row
 honestly."
 
 That's the recursion: cells compose into rows, rows compose into sheets,
-sheets compose into the quilt. At every level, the same three states
-(GO / NO-GO / MANUAL), the same ledger grammar, the same moral physics.
-The building blocks don't change as the structure grows — that's what
-makes them building blocks.
+sheets compose into the quilt. The blocks don't change as the structure
+grows — but remember what they are: not bricks, but living cells. Each one
+is still being watched, still owing, still earning its next round. At every
+level, the same three states (GO / NO-GO / MANUAL), the same ledger grammar,
+the same moral physics. Composition is what cells do. Stewardship is what
+they are.
