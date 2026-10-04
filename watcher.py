@@ -17,6 +17,16 @@ agent, another algorithm; at the top, a human. STATE.json names the next
 link in `watcher.escalate_to`. Exit 2 means "escalated" — the caller (parent
 watcher, cron, human) takes it from here.
 
+Call and response: an ESCALATE is a call — it raises the toggle
+(`pending_escalation` in STATE.json). The next link answers with an ACK
+("I heard that"), written as a ledger token. The mere image of the ACK in
+the ledger is what toggles the switch back: the next run sees it, stands
+the escalation down, and returns to normal. No separate flags — the tokens
+are the state machine. Record an ack with:
+    watcher.py --crab-dir <path> --ack <escalation-token> [--by <who>]
+If the ack itself never arrives (silence past `watcher.ack_every_hours`),
+the escalation passes to the next link after the unresponsive one.
+
 The watcher never runs on silence. Every run ends in an explicit decision.
 A watcher that cannot read the crab's state does not guess — it escalates.
 
@@ -64,10 +74,50 @@ def log_token(ledger, token, kind, detail):
         f.write(f"{token} WATCHER {kind} {detail}\n")
 
 
+def chain(state):
+    """The chain of command as a list. escalate_to may name one link or many."""
+    raw = state.get("watcher", {}).get("escalate_to", "human")
+    if isinstance(raw, str):
+        return [raw]
+    return list(raw) or ["human"]
+
+
+def next_link(state, after):
+    """The link after `after`. Silence from a link passes over it."""
+    c = chain(state)
+    if after in c:
+        i = c.index(after)
+        return c[i + 1] if i + 1 < len(c) else "human"
+    return c[0]
+
+
+def ack_every_hours(state):
+    try:
+        return float(state.get("watcher", {}).get("ack_every_hours", 1))
+    except (ValueError, TypeError):
+        return 1.0
+
+
+def ledger_has_ack(ledger, escalation_token):
+    """The mirror image: has the next link's 'I heard that' arrived?"""
+    try:
+        lines = ledger.read_text().splitlines()
+    except FileNotFoundError:
+        return None
+    for line in lines:
+        parts = line.split(" ", 3)
+        if (len(parts) >= 4 and parts[1] == "WATCHER" and parts[2] == "ACK"
+                and parts[3].split(" ", 1)[0] == escalation_token):
+            return line
+    return None
+
+
 def main():
     crab_dir = None
     sandbox_path = None
     sandbox_timeout = "30"
+    ack_token = None
+    ack_by = "human"
     args = sys.argv[1:]
     i = 0
     while i < len(args):
@@ -80,12 +130,19 @@ def main():
         elif args[i] == "--timeout" and i + 1 < len(args):
             sandbox_timeout = args[i + 1]
             i += 2
+        elif args[i] == "--ack" and i + 1 < len(args):
+            ack_token = args[i + 1]
+            i += 2
+        elif args[i] == "--by" and i + 1 < len(args):
+            ack_by = args[i + 1]
+            i += 2
         else:
             print(f"Unknown: {args[i]}", file=sys.stderr)
             sys.exit(1)
     if not crab_dir or not crab_dir.is_dir():
         print("Usage: watcher.py --crab-dir <path> [--sandbox <path>] "
-              "[--timeout <secs>]", file=sys.stderr)
+              "[--timeout <secs>] [--ack <escalation-token> [--by <who>]]",
+              file=sys.stderr)
         sys.exit(1)
 
     state_path = crab_dir / "STATE.json"
@@ -117,16 +174,93 @@ def main():
         print("ESCALATE: STATE.json is not an object. Passing up to human.")
         sys.exit(2)
 
+    # --- 0b. Recording an ack: "I heard that." ---
+    # This only writes the token. The toggle flips on the next run, when the
+    # watcher sees the image in the ledger. The image is the switch.
+    if ack_token:
+        pending = state.get("pending_escalation")
+        if not pending or pending.get("token") != ack_token:
+            print(f"No pending escalation {ack_token} — nothing to ack.",
+                  file=sys.stderr)
+            sys.exit(1)
+        atoken = f"wtok-{now}"
+        log_token(ledger, atoken, "ACK",
+                  f"{ack_token} heard by {ack_by} — standing by")
+        print(f"ACK recorded: {ack_token} heard by {ack_by}. "
+              "The next run stands the escalation down.")
+        sys.exit(0)
+
+    # --- 0c. The pending escalation: call and response. ---
+    pending = state.get("pending_escalation")
+    if pending:
+        ptoken = pending.get("token", "?")
+        pdest = pending.get("dest", "human")
+        ack_line = ledger_has_ack(ledger, ptoken)
+        if ack_line:
+            # Response received. Toggle back: stand the escalation down.
+            # The covered debts move to the next link — no more nagging.
+            acked_by = ack_line.split("heard by ", 1)[1].split(" ", 1)[0] \
+                if "heard by " in ack_line else pdest
+            covered = set(pending.get("debts", []))
+            for debt in state.get("debt", []):
+                if isinstance(debt, dict) and debt.get("id") in covered \
+                        and debt.get("status") == "open":
+                    debt["status"] = "escalated"
+                    debt["escalated_to"] = pdest
+                    debt["escalated_at"] = now
+            state["pending_escalation"] = None
+            state_path.write_text(json.dumps(state, indent=2))
+            log_token(ledger, token, "ACKNOWLEDGED",
+                      f"{ptoken} heard by {acked_by} — escalation stood down")
+            print(f"ACKNOWLEDGED: {pdest} heard {ptoken}. "
+                  "Back to normal — no longer escalating.")
+        elif is_overdue(pending.get("ack_due", now), now):
+            # The ack itself went silent past its deadline — the fourth
+            # position on the ack wire. Pass over the unresponsive link.
+            ndest = next_link(state, pdest)
+            ntoken = f"wtok-{now}"
+            state["pending_escalation"] = {
+                "token": ntoken,
+                "reason": f"no ack from {pdest} by {pending.get('ack_due')}",
+                "dest": ndest,
+                "raised_at": now,
+                "ack_due": stamp_plus_hours(now, ack_every_hours(state)),
+                "debts": pending.get("debts", []),
+            }
+            state_path.write_text(json.dumps(state, indent=2))
+            log_token(ledger, ntoken, "ESCALATE",
+                      f"no ack from {pdest} by {pending.get('ack_due')} "
+                      f"— passing over -> {ndest}")
+            print(f"ESCALATE: {pdest} never acked. Passing over to {ndest}.")
+            sys.exit(2)
+        else:
+            # Call already on the wire. No need to raise it again.
+            log_token(ledger, token, "ESCALATE-PENDING",
+                      f"{ptoken} awaiting ack from {pdest} "
+                      f"(due {pending.get('ack_due')})")
+            print(f"ESCALATE-PENDING: {ptoken} already raised, awaiting ack "
+                  f"from {pdest}. Not raising again.")
+            sys.exit(2)
+
     # The next link up the chain. A watcher that cannot decide passes to
     # whoever this names — another watcher, an agent, a human.
     def escalate_to():
-        try:
-            return state.get("watcher", {}).get("escalate_to", "human")
-        except AttributeError:
-            return "human"
+        return chain(state)[0]
 
     def escalate(reason):
         dest = escalate_to()
+        # The call raises the toggle. The ack will lower it.
+        open_ids = [d.get("id") for d in state.get("debt", [])
+                    if isinstance(d, dict) and d.get("status") == "open"]
+        state["pending_escalation"] = {
+            "token": token,
+            "reason": reason,
+            "dest": dest,
+            "raised_at": now,
+            "ack_due": stamp_plus_hours(now, ack_every_hours(state)),
+            "debts": open_ids,
+        }
+        state_path.write_text(json.dumps(state, indent=2))
         log_token(ledger, token, "ESCALATE", f"{reason} -> {dest}")
         print(f"ESCALATE: {reason} Passing up to {dest}.")
         sys.exit(2)
@@ -146,6 +280,8 @@ def main():
         report_every = 24
     for debt in debts:
         if not isinstance(debt, dict) or debt.get("status") != "open":
+            # Escalated debts belong to the next link now — no nagging.
+            # Fulfilled/retired debts are history.
             continue
         opened = debt.get("opened")
         if not opened:
@@ -213,7 +349,10 @@ def main():
 
     rt = results.get("token", "?")
     for debt in debts:
-        if isinstance(debt, dict) and debt.get("status") == "open":
+        # An honest report settles every outstanding obligation — open or
+        # escalated. The next link holding it doesn't stop the truth.
+        if isinstance(debt, dict) and debt.get("status") in ("open",
+                                                             "escalated"):
             debt["status"] = "fulfilled"
             debt["fulfilled_by"] = rt
             debt["fulfilled_at"] = now

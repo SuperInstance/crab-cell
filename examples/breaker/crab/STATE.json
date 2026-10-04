@@ -25,6 +25,8 @@
   "watcher": {
     "policy": "halt on unknown input; pass undecidable up the chain; never run free",
     "escalate_to": "human",
-    "report_every_hours": 24
+    "report_every_hours": 24,
+    "ack_every_hours": 1,
+    "pending_escalation": null
   }
 }

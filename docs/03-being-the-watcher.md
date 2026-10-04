@@ -79,6 +79,42 @@ That's why the overdue check has no state of its own. It produces an
 ESCALATE. There was never a fourth decision, only a fourth position on
 the wire — and the chain already knows what it means.
 
+## Call and response
+
+An ESCALATE is a call. It raises a toggle: `pending_escalation` in
+`STATE.json`, naming the token, the reason, the destination, and when the
+answer is due (`watcher.ack_every_hours`, default 1). While the toggle is
+up, the watcher does not raise the call again — the next run logs
+`ESCALATE-PENDING` and exits 2. The call is already on the wire; shouting
+it twice helps no one.
+
+The response is an ACK — "I heard that; you can stop telling me." The
+next link records it:
+
+```
+./watcher.py --crab-dir <path> --ack <escalation-token> --by <who>
+```
+
+This writes one token to the ledger and nothing else:
+
+```
+wtok-… WATCHER ACK wtok-… heard by casey — standing by
+```
+
+The mere image of the ACK is the toggle switch. On the next run, the
+watcher sees it in the ledger, logs `ACKNOWLEDGED`, clears the pending
+escalation, and marks the covered debts `escalated` — they belong to the
+next link now, so the watcher stops nagging about them. An honest report
+still settles them; the truth doesn't care who holds the debt. The crab
+is back to normal: the call was answered, the switch is down.
+
+And the ack wire has its own fourth position. If the next link never
+answers — silence past `ack_due` — the watcher passes *over* the silent
+link to the next one after it (`escalate_to` can name a whole chain:
+`["watcher:crabs/sentinel-02", "human"]`). Unresponsiveness escalates the
+same way overdue does. Every silence, at every layer, is either an answer
+or an escalation. There is no quiet that means nothing.
+
 ## What the watcher checks, in order
 
 1. **Can I read the crab?** `STATE.json` missing or corrupt → ESCALATE (straight to human — no state, no named superior).
