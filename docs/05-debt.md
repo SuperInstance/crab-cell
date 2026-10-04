@@ -64,6 +64,28 @@ A debt in `STATE.json`:
 The routine never transitions a debt. It *earns* fulfillment; the watcher
 *grants* it.
 
+## Kinds of debt
+
+Not all debts are the routine's to settle. Two kinds:
+
+**Standing** (`kind: "standing"`, the default) — the recurring obligation:
+do the work, report honestly. An honest report fulfills it, and it renews
+with a fresh float plan. There is always a next round.
+
+**Commitment** (`kind: "commitment"`) — something owed to the real world:
+deploy the site, deliver the token, finish the work. A report never
+fulfills a commitment; only the world does, recorded with:
+
+```
+watcher.py --crab-dir <path> --fulfill <debt-id> --by <who>
+```
+
+Commitments still carry float plans, and overdue commitments still
+escalate — the float plan doesn't care what kind of debt it's attached
+to. That's the point: a promise with a due date is a promise; without
+one it's a wish. The watcher's job is to notice when the wish didn't
+come true on time.
+
 ## Why debt, not tasks
 
 A task list says what *will* be done. A debt says what is *owed*. The

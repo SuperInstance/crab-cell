@@ -50,6 +50,8 @@ away, or to build on it.
   `wtok-` for watcher. Append-only.
 - Debts: open → fulfilled (watcher, on honest report) → renewed (standing
   obligations) or ESCALATE (past due — see the float plan in docs/05-debt.md).
+  Two kinds: `standing` (report settles it) and `commitment` (only the real
+  world settles it, via `--fulfill`).
 - Time: UTC, `YYYYMMDDTHHMMSSZ`.
 - The ledger is the source of truth; `STATE.json` is its cache.
 

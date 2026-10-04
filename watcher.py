@@ -118,6 +118,8 @@ def main():
     sandbox_timeout = "30"
     ack_token = None
     ack_by = "human"
+    fulfill_id = None
+    fulfill_by = "human"
     args = sys.argv[1:]
     i = 0
     while i < len(args):
@@ -133,16 +135,20 @@ def main():
         elif args[i] == "--ack" and i + 1 < len(args):
             ack_token = args[i + 1]
             i += 2
+        elif args[i] == "--fulfill" and i + 1 < len(args):
+            fulfill_id = args[i + 1]
+            i += 2
         elif args[i] == "--by" and i + 1 < len(args):
             ack_by = args[i + 1]
+            fulfill_by = args[i + 1]
             i += 2
         else:
             print(f"Unknown: {args[i]}", file=sys.stderr)
             sys.exit(1)
     if not crab_dir or not crab_dir.is_dir():
         print("Usage: watcher.py --crab-dir <path> [--sandbox <path>] "
-              "[--timeout <secs>] [--ack <escalation-token> [--by <who>]]",
-              file=sys.stderr)
+              "[--timeout <secs>] [--ack <escalation-token> | "
+              "--fulfill <debt-id>] [--by <who>]", file=sys.stderr)
         sys.exit(1)
 
     state_path = crab_dir / "STATE.json"
@@ -174,7 +180,33 @@ def main():
         print("ESCALATE: STATE.json is not an object. Passing up to human.")
         sys.exit(2)
 
-    # --- 0b. Recording an ack: "I heard that." ---
+    # --- 0b. Closing a commitment: the real world did the thing. ---
+    # Commitment debts are never fulfilled by a report — only by the world,
+    # recorded here. A report can't deploy a site; this says it happened.
+    if fulfill_id:
+        found = None
+        for d in state.get("debt", []):
+            if isinstance(d, dict) and d.get("id") == fulfill_id:
+                found = d
+                break
+        if not found:
+            print(f"No debt {fulfill_id}.", file=sys.stderr)
+            sys.exit(1)
+        if found.get("status") not in ("open", "escalated"):
+            print(f"Debt {fulfill_id} is {found.get('status')} — "
+                  "nothing to fulfill.", file=sys.stderr)
+            sys.exit(1)
+        found["status"] = "fulfilled"
+        found["fulfilled_by"] = f"manual:{fulfill_by}"
+        found["fulfilled_at"] = now
+        state_path.write_text(json.dumps(state, indent=2))
+        log_token(ledger, f"wtok-{now}", "FULFILLED",
+                  f"debt {fulfill_id} fulfilled by {fulfill_by} "
+                  "— real-world completion")
+        print(f"FULFILLED: debt {fulfill_id} closed by {fulfill_by}.")
+        sys.exit(0)
+
+    # --- 0c. Recording an ack: "I heard that." ---
     # This only writes the token. The toggle flips on the next run, when the
     # watcher sees the image in the ledger. The image is the switch.
     if ack_token:
@@ -190,7 +222,7 @@ def main():
               "The next run stands the escalation down.")
         sys.exit(0)
 
-    # --- 0c. The pending escalation: call and response. ---
+    # --- 0d. The pending escalation: call and response. ---
     pending = state.get("pending_escalation")
     if pending:
         ptoken = pending.get("token", "?")
@@ -348,29 +380,39 @@ def main():
         escalate("STATE.json changed under us and is now unreadable")
 
     rt = results.get("token", "?")
-    for debt in debts:
-        # An honest report settles every outstanding obligation — open or
-        # escalated. The next link holding it doesn't stop the truth.
-        if isinstance(debt, dict) and debt.get("status") in ("open",
-                                                             "escalated"):
-            debt["status"] = "fulfilled"
-            debt["fulfilled_by"] = rt
-            debt["fulfilled_at"] = now
-    # The standing obligation renews: there is always a next tally.
-    # The renewed debt files a new float plan — report due by its own deadline.
+    # An honest report settles standing obligations — the recurring "do the
+    # work and tell the truth." Commitment debts (kind=commitment) are owed
+    # to the real world; a report never closes them, only --fulfill does.
     report_every = state.get("watcher", {}).get("report_every_hours", 24)
     try:
         report_every = float(report_every)
     except (ValueError, TypeError):
         report_every = 24
-    debts.append({
-        "id": f"debt-{now}-{os.getpid()}",
-        "obligation": "count what passes through and report honestly",
-        "opened": now,
-        "due": stamp_plus_hours(now, report_every),
-        "owed_to": "the-quilt",
-        "status": "open",
-    })
+    renewed = 0
+    new_debts = []
+    for debt in debts:
+        if not isinstance(debt, dict):
+            continue
+        if debt.get("status") not in ("open", "escalated"):
+            continue
+        if debt.get("kind", "standing") != "standing":
+            continue
+        debt["status"] = "fulfilled"
+        debt["fulfilled_by"] = rt
+        debt["fulfilled_at"] = now
+        # The standing obligation renews with a fresh float plan: there is
+        # always a next round, and it carries its own deadline.
+        renewed += 1
+        new_debts.append({
+            "id": f"debt-{now}-{os.getpid()}-{renewed}",
+            "kind": "standing",
+            "obligation": debt["obligation"],
+            "opened": now,
+            "due": stamp_plus_hours(now, report_every),
+            "owed_to": debt.get("owed_to", "the-quilt"),
+            "status": "open",
+        })
+    debts.extend(new_debts)
     state["debt"] = debts
     state_path.write_text(json.dumps(state, indent=2))
     log_token(ledger, token, "FULFILLED",

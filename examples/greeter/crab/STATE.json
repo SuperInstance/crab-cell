@@ -8,7 +8,8 @@
       "opened": null,
       "owed_to": "the-quilt",
       "status": "open",
-      "due": null
+      "due": null,
+      "kind": "standing"
     }
   ],
   "last_run": null,
