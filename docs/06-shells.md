@@ -46,6 +46,14 @@ bwrap + Landlock around the routine on a shared machine: read-only rootfs,
 secret dirs replaced with empty tmpfs, isolated /tmp, writable only to the
 crab's directory, SIGKILL timeout.
 
+One consequence worth knowing: bwrap's `--unshare-all` gives the routine
+its own PID namespace. The routine can see itself, and nothing else — it
+cannot observe host processes (`pgrep` finds nothing, foreign PIDs don't
+exist). A routine that needs to check on the host must check *effects*,
+not processes: the health crab, for instance, reads the scheduler's pulse
+from ledger mtimes instead of looking for the cron daemon. Check the
+pulse, not the process.
+
 When to use it: many crabs on one machine, where a VM each is wasteful.
 Weaker than a VM boundary, stronger than nothing — and honest about it:
 the script warns when bwrap is missing and degrades to timeout-only. The
