@@ -1,0 +1,27 @@
+{
+  "crab": "crab-template",
+  "cursor": 0,
+  "debt": [
+    {
+      "id": "debt-001",
+      "obligation": "count what passes through and report honestly",
+      "opened": null,
+      "owed_to": "the-quilt",
+      "status": "open"
+    }
+  ],
+  "last_run": null,
+  "lineage": {
+    "distilled_from": null,
+    "parents": [],
+    "siblings": 0
+  },
+  "role": "example-counter \u2014 counts the grains, owes the tally",
+  "room": {
+    "notes": "Accumulated attention lives here. What the watcher has learned, in plain words."
+  },
+  "routine": "routine.sh",
+  "watcher": {
+    "policy": "halt on unknown input; escalate on debt older than 24h; fail to manual"
+  }
+}
